@@ -166,3 +166,9 @@ on conflict (id) do nothing;
 
 -- Uma conta por e-mail
 create unique index if not exists perfis_email_unico on public.perfis (lower(email));
+
+-- Permissões de acesso pela API (as regras de RLS acima continuam valendo)
+grant usage on schema public to anon, authenticated, service_role;
+grant select on public.planos, public.produtos, public.configuracoes to anon;
+grant all on all tables in schema public to authenticated, service_role;
+grant usage, select on all sequences in schema public to authenticated, service_role;
