@@ -36,6 +36,35 @@ Abra http://localhost:3000. Sem as chaves do Supabase, o site funciona em **modo
 3. Em **Project Settings > API**, copie a *URL* e a *anon key* para o `.env.local`.
 4. Crie o login da Jaque em **Authentication > Users** e, na tabela `perfis`, marque `is_admin = true` para ela.
 
+## Como funciona a compra de um plano
+
+1. A aluna escolhe o plano no site, preenche os dados e clica em **Pagar com Pix ou cartão**.
+2. O site guarda os dados na tabela `compras` e abre a tela de pagamento do Mercado Pago.
+3. Quando o pagamento é aprovado, o Mercado Pago avisa o site (`/api/webhooks/mercadopago`), e o sistema faz tudo sozinho:
+   - cria a conta da aluna (só na primeira compra);
+   - libera o plano no app (tabela `assinaturas`, com data de vencimento);
+   - manda o e-mail de boas-vindas com o botão **Criar minha senha**.
+4. A aluna clica no botão, cria a própria senha em `/app/criar-senha` e já entra no app.
+
+A senha **nunca** vai escrita no e-mail. Se o link vencer, a aluna pede outro na tela de entrada do app ("Esqueci ou ainda não criei minha senha"). Se ela já for aluna e comprar de novo, o plano é renovado e os dias que faltavam não se perdem.
+
+| Arquivo | O que faz |
+| --- | --- |
+| `src/app/api/checkout/route.ts` | Confere os dados (inclusive CPF), pega o preço do banco e cria a cobrança |
+| `src/app/api/webhooks/mercadopago/route.ts` | Recebe o aviso do Mercado Pago e confere o pagamento direto na API |
+| `src/lib/liberarPlano.ts` | Cria a conta, libera o plano e marca a compra como paga |
+| `src/app/auth/confirm/route.ts` | Confere o link do e-mail e deixa a aluna logada |
+| `src/middleware.ts` | Protege o app (só aluna logada) e o painel (só a Jaque) |
+| `supabase/emails/` | Modelos de e-mail com a marca da Jaque |
+
+### Configurar o pagamento e os e-mails
+
+1. **Mercado Pago:** em [Suas integrações](https://www.mercadopago.com.br/developers/panel/app), crie uma aplicação (Checkout Pro). Copie o *Access Token* para `MERCADOPAGO_ACCESS_TOKEN`. Em **Webhooks**, cadastre `https://SEU-SITE/api/webhooks/mercadopago` com o evento **Pagamentos** e copie a assinatura secreta para `MERCADOPAGO_WEBHOOK_SECRET`. Teste primeiro com as credenciais de teste.
+2. **Supabase > Authentication > URL Configuration:** em *Site URL*, coloque o endereço do site. Em *Redirect URLs*, adicione `https://SEU-SITE/**`.
+3. **Supabase > Authentication > Emails:** cole `supabase/emails/convite.html` no modelo **Invite user** e `supabase/emails/redefinir-senha.html` no **Reset password** (o assunto sugerido está na primeira linha de cada arquivo).
+4. **E-mail de verdade (SMTP):** o envio padrão do Supabase só serve para testes (manda poucos e-mails por hora). Para as alunas, crie uma conta grátis no [Resend](https://resend.com), confirme o domínio e preencha em **Authentication > Emails > SMTP Settings**.
+5. Copie `SUPABASE_SERVICE_ROLE_KEY` (Project Settings > API > service_role) para o servidor. Essa chave nunca vai para o navegador.
+
 ## Publicar na Vercel
 
 1. Em [vercel.com](https://vercel.com), clique em **Add New > Project** e escolha este repositório.
@@ -69,8 +98,11 @@ supabase/schema.sql      → tabelas e regras de segurança
 - [x] PWA do app (instalável, abre direto no login)
 - [x] Banco de dados e regras de segurança (`supabase/schema.sql`)
 - [ ] Ler planos e produtos do Supabase em vez de `data.ts`
-- [ ] Login da aluna e proteção do `/app` e do `/admin`
-- [ ] Pagamento com Mercado Pago (Pix, cartão e assinatura) + webhook que libera o plano
+- [x] Login da aluna e proteção do `/app` e do `/admin`
+- [x] Pagamento com Mercado Pago (Pix e cartão) + webhook que cria a conta, libera o plano e manda o e-mail "Criar minha senha"
+- [ ] Cobrança recorrente automática no cartão (assinatura do Mercado Pago)
+- [ ] Painel: lista de compras e alunas novas
+- [ ] App: mostrar o plano e a data de vencimento reais da aluna
 - [ ] Painel: editar planos e produtos, avançar pedidos, liberar alunas
 - [ ] Treinos da aluna com vídeos e feedback
 - [ ] Fotos reais da Jaque e dos produtos

@@ -9,32 +9,35 @@ const campo =
   "h-13 rounded-2xl border border-[var(--line2)] bg-[var(--card)] px-4 text-base text-[var(--text)] outline-none focus:border-pink";
 
 /**
- * Formulário de dados da aluna.
- * TODO (etapa de pagamentos): enviar para /api/checkout, que cria a cobrança no
- * Mercado Pago e devolve o link do Pix/cartão. O webhook libera o plano no app.
+ * Formulário de dados da aluna. Envia para /api/checkout, que guarda os dados
+ * e devolve o link do Mercado Pago (Pix ou cartão). Quando o pagamento é aprovado,
+ * o sistema cria a conta, libera o plano e manda o e-mail "Criar minha senha".
  */
 export function CheckoutForm({ planoId, personal }: { planoId: string; personal: boolean }) {
   const [objetivo, setObjetivo] = useState(objetivos[0]);
   const [horario, setHorario] = useState(horarios[0]);
-  const [enviado, setEnviado] = useState(false);
+  const [erro, setErro] = useState("");
+  const [enviando, setEnviando] = useState(false);
 
-  function enviar(e: React.FormEvent<HTMLFormElement>) {
+  async function enviar(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
+    setErro("");
+    setEnviando(true);
     const dados = Object.fromEntries(new FormData(e.currentTarget));
-    // Por enquanto só mostra no console. Na próxima etapa vai para o pagamento.
-    console.log({ planoId, objetivo, horario: personal ? horario : null, ...dados });
-    setEnviado(true);
-  }
-
-  if (enviado) {
-    return (
-      <div className="rounded-3xl border border-[var(--line)] bg-[var(--card)] p-8 text-center">
-        <p className="font-display text-4xl uppercase">Quase lá!</p>
-        <p className="mt-3 text-[var(--text2)]">
-          O pagamento por Pix e cartão entra na próxima etapa do projeto.
-        </p>
-      </div>
-    );
+    try {
+      const resposta = await fetch("/api/checkout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ...dados, planoId, objetivo, horario: personal ? horario : null }),
+      });
+      const json = (await resposta.json()) as { url?: string; erro?: string };
+      if (!resposta.ok || !json.url) throw new Error(json.erro ?? "Não foi possível iniciar o pagamento.");
+      // Vai para a tela de pagamento do Mercado Pago (ou para o sucesso, no modo demonstração).
+      window.location.href = json.url;
+    } catch (falha) {
+      setErro(falha instanceof Error ? falha.message : "Não foi possível iniciar o pagamento.");
+      setEnviando(false);
+    }
   }
 
   return (
@@ -99,9 +102,22 @@ export function CheckoutForm({ planoId, personal }: { planoId: string; personal:
         </fieldset>
       )}
 
-      <button type="submit" className="mt-2 h-14 rounded-full bg-pink text-base font-extrabold text-ink">
-        Continuar para o pagamento
+      {erro && (
+        <p role="alert" className="rounded-2xl border border-pink px-4 py-3 text-sm font-bold text-pink">
+          {erro}
+        </p>
+      )}
+
+      <button
+        type="submit"
+        disabled={enviando}
+        className="mt-2 h-14 rounded-full bg-pink text-base font-extrabold text-ink disabled:opacity-60"
+      >
+        {enviando ? "Abrindo o pagamento..." : "Pagar com Pix ou cartão"}
       </button>
+      <p className="text-center text-xs font-semibold text-[var(--muted)]">
+        Pagamento seguro pelo Mercado Pago. Assim que for aprovado, você recebe no e-mail o link para criar sua senha do app.
+      </p>
     </form>
   );
 }

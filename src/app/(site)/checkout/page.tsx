@@ -9,9 +9,9 @@ export const metadata: Metadata = { title: "Finalizar assinatura" };
 export default async function CheckoutPage({
   searchParams,
 }: {
-  searchParams: Promise<{ plano?: string }>;
+  searchParams: Promise<{ plano?: string; erro?: string }>;
 }) {
-  const { plano: planoId } = await searchParams;
+  const { plano: planoId, erro } = await searchParams;
   const plano = planos.find((p) => p.id === planoId && p.ativo);
 
   if (!plano) {
@@ -40,7 +40,14 @@ export default async function CheckoutPage({
           Pagamento seguro. Assim que for aprovado, seu acesso ao app é liberado na hora.
         </p>
       </aside>
-      <CheckoutForm planoId={plano.id} personal={plano.categoria === "personal"} />
+      <div>
+        {erro === "pagamento" && (
+          <p role="alert" className="mb-5 rounded-2xl border border-pink px-4 py-3 text-sm font-bold text-pink">
+            O pagamento não foi concluído. Confira os dados e tente de novo, ou escolha outra forma de pagamento.
+          </p>
+        )}
+        <CheckoutForm planoId={plano.id} personal={plano.categoria === "personal"} />
+      </div>
     </section>
   );
 }

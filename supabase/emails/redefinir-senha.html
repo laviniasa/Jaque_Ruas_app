@@ -1,0 +1,25 @@
+<!-- Supabase > Authentication > Emails > "Reset password". Assunto: Crie sua nova senha do app da Jaque Ruas -->
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#0B0B0C;padding:32px 12px;font-family:Arial,Helvetica,sans-serif;">
+  <tr><td align="center">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:480px;background:#161618;border-radius:24px;overflow:hidden;">
+      <tr><td style="background:#FF4D9D;padding:28px 32px;text-align:center;">
+        <p style="margin:0;font-size:28px;line-height:1;font-weight:900;letter-spacing:1px;color:#0B0B0C;text-transform:uppercase;">Jaque Ruas</p>
+        <p style="margin:6px 0 0;font-size:12px;font-weight:700;letter-spacing:2px;color:#0B0B0C;text-transform:uppercase;">Personal especialista em glúteos</p>
+      </td></tr>
+      <tr><td style="padding:36px 32px 12px;color:#F4F1EC;">
+        <p style="margin:0 0 8px;font-size:24px;font-weight:900;">Vamos criar sua senha</p>
+        <p style="margin:0 0 24px;font-size:16px;line-height:1.55;color:#C9C4BD;">Recebemos um pedido para criar ou trocar a senha do seu acesso ao app da Jaque. Toque no botão abaixo para escolher a nova senha.</p>
+        <table role="presentation" cellpadding="0" cellspacing="0" width="100%"><tr><td align="center">
+          <a href="{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=recovery&next=/app/criar-senha"
+             style="display:inline-block;background:#D8FF3E;color:#0B0B0C;font-size:17px;font-weight:900;text-decoration:none;padding:17px 34px;border-radius:999px;">Criar minha senha</a>
+        </td></tr></table>
+        <p style="margin:24px 0 0;font-size:13px;line-height:1.5;color:#8E8A84;">O botão vale por 1 hora e só funciona uma vez.</p>
+      </td></tr>
+      <tr><td style="padding:24px 32px 32px;">
+        <p style="margin:0;font-size:12px;line-height:1.5;color:#6F6B66;border-top:1px solid #2A2A2D;padding-top:16px;">
+          Por segurança, nunca mandamos sua senha por e-mail. Se você não fez este pedido, é só ignorar esta mensagem.
+        </p>
+      </td></tr>
+    </table>
+  </td></tr>
+</table>

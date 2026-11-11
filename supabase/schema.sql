@@ -7,6 +7,7 @@
 create table if not exists public.perfis (
   id uuid primary key references auth.users (id) on delete cascade,
   nome text not null,
+  email text,
   whatsapp text,
   cpf text,
   objetivo text,
@@ -37,8 +38,28 @@ create table if not exists public.assinaturas (
   status text not null default 'pendente' check (status in ('pendente', 'ativa', 'vencida', 'cancelada', 'bloqueada')),
   inicio date,
   vence_em date,
-  pagamento_ref text, -- id do pagamento/assinatura no Mercado Pago
+  pagamento_ref text unique, -- id do pagamento no Mercado Pago (evita liberar duas vezes)
   criado_em timestamptz not null default now()
+);
+
+-- Compras de planos feitas no site. Guarda os dados do formulário até o pagamento
+-- ser aprovado; aí o sistema cria a conta da aluna e libera o plano.
+create table if not exists public.compras (
+  id uuid primary key default gen_random_uuid(),
+  plano_id text not null references public.planos (id),
+  nome text not null,
+  email text not null,
+  whatsapp text not null,
+  cpf text,
+  objetivo text,
+  horario_preferido text,
+  valor numeric(10, 2) not null,
+  status text not null default 'aguardando_pagamento'
+    check (status in ('aguardando_pagamento', 'paga', 'recusada', 'cancelada')),
+  pagamento_ref text,
+  aluna_id uuid references public.perfis (id),
+  criado_em timestamptz not null default now(),
+  pago_em timestamptz
 );
 
 -- Produtos da loja
@@ -102,6 +123,7 @@ $$;
 alter table public.perfis enable row level security;
 alter table public.planos enable row level security;
 alter table public.assinaturas enable row level security;
+alter table public.compras enable row level security;
 alter table public.produtos enable row level security;
 alter table public.pedidos enable row level security;
 alter table public.pedido_itens enable row level security;
@@ -123,6 +145,8 @@ create policy "admin edita perfis" on public.perfis for all using (public.eh_adm
 create policy "aluna vê as próprias assinaturas" on public.assinaturas for select using (aluna_id = auth.uid() or public.eh_admin());
 create policy "admin gerencia assinaturas" on public.assinaturas for all using (public.eh_admin()) with check (public.eh_admin());
 
+create policy "admin vê compras de planos" on public.compras for all using (public.eh_admin()) with check (public.eh_admin());
+
 create policy "admin gerencia pedidos" on public.pedidos for all using (public.eh_admin()) with check (public.eh_admin());
 create policy "admin gerencia itens" on public.pedido_itens for all using (public.eh_admin()) with check (public.eh_admin());
 -- Pedidos e assinaturas são criados pelo servidor (webhook do pagamento) com a chave de serviço,
@@ -139,3 +163,6 @@ insert into public.planos (id, categoria, nome, descricao, preco, periodo, meses
   ('oa', 'online', 'Anual', 'Treino no app por 12 meses', 297, 'por ano', 12, 'Mais escolhido', 5),
   ('ov', 'online', 'Vitalício', 'Acesso para sempre', 397, 'pagamento único', null, null, 6)
 on conflict (id) do nothing;
+
+-- Uma conta por e-mail
+create unique index if not exists perfis_email_unico on public.perfis (lower(email));
