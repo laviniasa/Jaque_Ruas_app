@@ -1,0 +1,118 @@
+@import "tailwindcss";
+
+/* Cores e fontes da marca Jaque Ruas */
+@theme {
+  --color-pink: #ff4d9d;
+  --color-pink-strong: #e8176f;
+  --color-lime: #d8ff3e;
+  --color-ink: #0b0b0c;
+  --color-cream: #f4f1ec;
+
+  --font-display: var(--font-anton), "Anton", sans-serif;
+  --font-sans: var(--font-manrope), "Manrope", system-ui, sans-serif;
+  --font-mono: var(--font-jetbrains), ui-monospace, monospace;
+}
+
+/* Tema escuro (Neon) é o padrão; o claro (Clean) é ativado pelo botão */
+:root,
+[data-theme="dark"] {
+  --page: #0b0b0c;
+  --text: #f4f1ec;
+  --text2: #cfcac4;
+  --muted: #a7a3a0;
+  --card: #151517;
+  --card2: #232327;
+  --line: #2a2a2e;
+  --line2: #3a3a3f;
+  --accent: #ff4d9d;
+  --accent-text: #d8ff3e;
+}
+
+[data-theme="light"] {
+  --page: #ffffff;
+  --text: #111111;
+  --text2: #333333;
+  --muted: #5e5e5e;
+  --card: #f5f5f5;
+  --card2: #ececec;
+  --line: #e4e4e4;
+  --line2: #cfcfcf;
+  --accent: #e8176f;
+  --accent-text: #e8176f;
+}
+
+/* Área escura fixa (ex.: telas do app, que são sempre escuras) */
+[data-dark] {
+  --page: #0b0b0c;
+  --text: #f4f1ec;
+  --text2: #cfcac4;
+  --muted: #a7a3a0;
+  --card: #151517;
+  --card2: #232327;
+  --line: #2a2a2e;
+  --line2: #3a3a3f;
+  --accent: #ff4d9d;
+  --accent-text: #d8ff3e;
+}
+
+html,
+body {
+  background: var(--page);
+  color: var(--text);
+}
+
+body {
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ---------- Animações ---------- */
+@keyframes jr-rise {
+  from { opacity: 0; transform: translateY(60%) skewY(6deg); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes jr-reveal {
+  from { opacity: 0; transform: translateY(110px) scale(0.88); filter: blur(10px); }
+  to { opacity: 1; transform: none; filter: none; }
+}
+@keyframes jr-marquee {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
+}
+@keyframes jr-spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+@keyframes jr-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(255, 77, 157, 0.6); }
+  50% { box-shadow: 0 0 0 22px rgba(255, 77, 157, 0); }
+}
+@keyframes jr-grow {
+  to { transform: scaleX(1); }
+}
+
+.jr-rise { animation: jr-rise 1s cubic-bezier(0.2, 0.8, 0.2, 1) both; }
+.jr-marquee { animation: jr-marquee 28s linear infinite; }
+.jr-spin { animation: jr-spin 18s linear infinite; }
+.jr-pulse { animation: jr-pulse 2.2s ease-out infinite; }
+
+.jr-progress {
+  position: fixed; inset: 0 0 auto 0; height: 4px; z-index: 60;
+  background: var(--color-pink); transform-origin: 0 50%; transform: scaleX(0);
+  pointer-events: none;
+}
+
+/* Aparecer ao rolar (Chrome, Edge, Safari 26+). Em outros navegadores fica estático. */
+@supports (animation-timeline: view()) {
+  .jr-progress { animation: jr-grow linear both; animation-timeline: scroll(root); }
+  .jr-reveal {
+    animation: jr-reveal linear both;
+    animation-timeline: view();
+    animation-range: entry 0% entry 300px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .jr-rise, .jr-reveal, .jr-marquee, .jr-spin, .jr-pulse, .jr-progress { animation: none !important; }
+  .jr-progress { display: none; }
+}
