@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Anton, JetBrains_Mono, Manrope } from "next/font/google";
+import { SessaoDoLink } from "@/components/SessaoDoLink";
 import "./globals.css";
 
 const anton = Anton({ weight: "400", subsets: ["latin"], variable: "--font-anton" });
@@ -23,7 +24,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       suppressHydrationWarning
       className={`${anton.variable} ${manrope.variable} ${jetbrains.variable}`}
     >
-      <body>{children}</body>
+      <body>
+        <SessaoDoLink />
+        {children}
+      </body>
     </html>
   );
 }
