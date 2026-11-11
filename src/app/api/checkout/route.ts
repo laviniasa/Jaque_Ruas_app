@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { dentroDoLimite, emailDescartavel, ipDaRequisicao, separarNome, separarTelefone } from "@/lib/antifraude";
 import { planos as planosDemo } from "@/lib/data";
+import { criarLinkInfinitePay, infinitePayConfigurada } from "@/lib/infinitepay";
 import { processarPagamento } from "@/lib/liberarPlano";
 import { criarCobranca, mercadoPagoConfigurado } from "@/lib/mercadopago";
 import { criarClienteAdmin } from "@/lib/supabase/admin";
@@ -8,7 +9,9 @@ import { urlDoSite } from "@/lib/site";
 
 /**
  * Recebe o formulário do checkout, guarda os dados da aluna como "compra aguardando
- * pagamento" e devolve o link do Mercado Pago (Pix ou cartão).
+ * pagamento" e devolve o link de pagamento (Pix ou cartão).
+ * Provedor: InfinitePay (principal). O Mercado Pago fica como alternativa,
+ * usado só se a InfinitePay não estiver configurada.
  * O preço sempre vem do banco, nunca do navegador.
  */
 export async function POST(request: Request) {
@@ -34,13 +37,14 @@ export async function POST(request: Request) {
   }
 
   const admin = criarClienteAdmin();
+  const provedor = infinitePayConfigurada() ? "infinitepay" : mercadoPagoConfigurado() ? "mercadopago" : null;
 
   // Modo teste: finge que o pagamento foi aprovado (cria a conta, libera o plano e manda o e-mail).
   // Ligue com PAGAMENTO_SIMULADO=true no servidor. DESLIGUE antes de lançar o site!
-  const simulado = Boolean(admin) && !mercadoPagoConfigurado() && process.env.PAGAMENTO_SIMULADO === "true";
+  const simulado = Boolean(admin) && !provedor && process.env.PAGAMENTO_SIMULADO === "true";
 
-  // Modo demonstração: sem Supabase ou sem Mercado Pago, vai direto para a tela de sucesso.
-  if (!admin || (!mercadoPagoConfigurado() && !simulado)) {
+  // Modo demonstração: sem Supabase ou sem provedor de pagamento, vai direto para a tela de sucesso.
+  if (!admin || (!provedor && !simulado)) {
     const plano = planosDemo.find((p) => p.id === dados.planoId && p.ativo);
     if (!plano) return NextResponse.json({ erro: "Plano não encontrado." }, { status: 404 });
     return NextResponse.json({ url: "/checkout/obrigada?demo=1" });
@@ -102,6 +106,21 @@ export async function POST(request: Request) {
 
   try {
     const titulo = `${plano.categoria === "personal" ? "Personal" : "Treino online"} ${plano.nome} | Jaque Ruas`;
+
+    if (provedor === "infinitepay") {
+      const url = await criarLinkInfinitePay({
+        compraId: compra.id,
+        descricao: titulo,
+        preco: Number(plano.preco),
+        nome: dados.nome,
+        email: dados.email,
+        whatsapp: dados.whatsapp,
+        siteUrl: urlDoSite(request),
+      });
+      await admin.from("compras").update({ pagamento_ref: "infinitepay" }).eq("id", compra.id);
+      return NextResponse.json({ url });
+    }
+
     const { nome, sobrenome } = separarNome(dados.nome);
     const url = await criarCobranca({
       compraId: compra.id,

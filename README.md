@@ -36,6 +36,24 @@ Abra http://localhost:3000. Sem as chaves do Supabase, o site funciona em **modo
 3. Em **Project Settings > API**, copie a *URL* e a *anon key* para o `.env.local`.
 4. Crie o login da Jaque em **Authentication > Users** e, na tabela `perfis`, marque `is_admin = true` para ela.
 
+## Pagamento: InfinitePay
+
+O pagamento principal é pela **InfinitePay** (link de pagamento, Pix e cartão):
+
+- a Jaque recebe **à vista**;
+- se a aluna parcelar (até 12x), **os juros ficam com a aluna** (`assured_installments: 0`);
+- o personal aparece no site como "Pix ou cartão à vista". A InfinitePay não permite travar o número de parcelas, mas como os juros ficam com a aluna, a Jaque recebe o valor cheio de qualquer jeito;
+- o aviso da InfinitePay não tem assinatura. Por isso o site **sempre confere o pagamento** em `/payment_check` antes de liberar, e o endereço do aviso leva uma senha (`INFINITEPAY_WEBHOOK_TOKEN`);
+- a InfinitePay não tem ambiente de teste: teste com um plano de R$1 e estorne pelo app.
+
+| Arquivo | O que faz |
+| --- | --- |
+| `src/lib/infinitepay.ts` | Cria o link de pagamento e confere o pagamento |
+| `src/app/api/webhooks/infinitepay/route.ts` | Recebe o aviso de pagamento |
+| `src/app/(site)/checkout/obrigada/page.tsx` | Também confere o pagamento quando a aluna volta da InfinitePay |
+
+O Mercado Pago continua no código como alternativa: ele só é usado se as variáveis da InfinitePay estiverem vazias.
+
 ## Como funciona a compra de um plano
 
 1. A aluna escolhe o plano no site, preenche os dados e clica em **Pagar com Pix ou cartão**.

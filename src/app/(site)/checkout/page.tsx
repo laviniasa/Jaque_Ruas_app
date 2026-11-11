@@ -37,7 +37,10 @@ export default async function CheckoutPage({
         <p className="mt-6 font-display text-5xl">{brl(plano.preco)}</p>
         <p className="font-bold text-[#5C5853]">{plano.periodo}</p>
         <p className="mt-6 border-t border-[#D6D0C8] pt-4 text-sm font-semibold text-[#5C5853]">
-          Pagamento seguro. Assim que for aprovado, seu acesso ao app é liberado na hora.
+          {plano.categoria === "personal"
+            ? "Pix ou cartão à vista. O personal é pago antes da primeira aula."
+            : "Pix ou cartão em até 12x (os juros do parcelamento ficam com quem parcela)."}{" "}
+          Assim que o pagamento for aprovado, seu acesso ao app é liberado na hora.
         </p>
       </aside>
       <div>

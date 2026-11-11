@@ -141,7 +141,7 @@ export function CheckoutForm({ planoId, personal }: { planoId: string; personal:
         {enviando ? "Abrindo o pagamento..." : "Pagar com Pix ou cartão"}
       </button>
       <p className="text-center text-xs font-semibold text-[var(--muted)]">
-        Pagamento seguro pelo Mercado Pago. Assim que for aprovado, você recebe no e-mail o link para criar sua senha do app.
+        Pagamento seguro pela InfinitePay. Assim que for aprovado, você recebe no e-mail o link para criar sua senha do app.
       </p>
     </form>
   );

@@ -1,5 +1,9 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { infinitePayConfigurada } from "@/lib/infinitepay";
+import { liberarSePago } from "@/lib/liberarPlano";
+import { urlDoSite } from "@/lib/site";
+import { criarClienteAdmin } from "@/lib/supabase/admin";
 
 export const metadata: Metadata = { title: "Pagamento recebido" };
 
@@ -7,15 +11,37 @@ export const metadata: Metadata = { title: "Pagamento recebido" };
 export default async function Obrigada({
   searchParams,
 }: {
-  searchParams: Promise<{ status?: string; demo?: string; teste?: string }>;
+  searchParams: Promise<{
+    status?: string;
+    demo?: string;
+    teste?: string;
+    order_nsu?: string;
+    transaction_nsu?: string;
+    slug?: string;
+  }>;
 }) {
-  const { status, demo, teste } = await searchParams;
-  const pendente = status === "pendente";
+  const { status, demo, teste, order_nsu, transaction_nsu, slug } = await searchParams;
+  let pendente = status === "pendente";
+
+  // Volta da InfinitePay: confere o pagamento na hora (o aviso automático também faz isso;
+  // o que chegar primeiro libera, sem duplicar).
+  if (order_nsu && transaction_nsu && slug && infinitePayConfigurada()) {
+    const admin = criarClienteAdmin();
+    if (admin) {
+      try {
+        const pago = await liberarSePago(admin, { orderNsu: order_nsu, transactionNsu: transaction_nsu, slug }, urlDoSite());
+        if (!pago) pendente = true;
+      } catch (e) {
+        console.error("Erro ao conferir pagamento na volta da InfinitePay", e);
+        pendente = true;
+      }
+    }
+  }
 
   const passos = pendente
     ? [
-        "Pague o Pix pelo app do seu banco (o código vale por tempo limitado).",
-        "Assim que o banco confirmar, seu plano é liberado sozinho.",
+        "Se ainda não pagou, conclua o Pix ou o cartão na tela de pagamento.",
+        "Assim que o pagamento for confirmado, seu plano é liberado sozinho.",
         "Você recebe um e-mail com o botão “Criar minha senha”.",
       ]
     : [
@@ -27,7 +53,7 @@ export default async function Obrigada({
   return (
     <section className="mx-auto max-w-xl px-4 py-20 text-center">
       <span className="font-mono text-xs font-bold uppercase tracking-[0.12em] text-pink">
-        {pendente ? "Aguardando o Pix" : "Pagamento aprovado"}
+        {pendente ? "Aguardando confirmação" : "Pagamento aprovado"}
       </span>
       <h1 className="mt-4 font-display text-5xl uppercase leading-none sm:text-6xl">
         {pendente ? "Quase lá!" : "Bem-vinda ao time!"}

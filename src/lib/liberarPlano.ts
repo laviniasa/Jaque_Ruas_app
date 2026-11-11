@@ -1,4 +1,5 @@
 import type { ClienteAdmin } from "@/lib/supabase/admin";
+import { conferirPagamentoInfinitePay } from "@/lib/infinitepay";
 import type { PagamentoMP } from "@/lib/mercadopago";
 
 /**
@@ -164,4 +165,20 @@ function somarMeses(data: string, meses: number) {
   // 31/01 + 1 mês vira o último dia de fevereiro, e não 03/03.
   if (resultado.getUTCDate() !== dia) resultado.setUTCDate(0);
   return resultado.toISOString().slice(0, 10);
+}
+
+/** Confere na InfinitePay e, se estiver pago, cria a conta e libera o plano. */
+export async function liberarSePago(
+  admin: ClienteAdmin,
+  p: { orderNsu: string; transactionNsu: string; slug: string },
+  siteUrl: string,
+) {
+  const conferido = await conferirPagamentoInfinitePay(p);
+  if (!conferido.pago) return false;
+  await processarPagamento(
+    admin,
+    { id: `ip-${conferido.transacao}`, status: "approved", external_reference: p.orderNsu, transaction_amount: conferido.valor },
+    siteUrl,
+  );
+  return true;
 }
