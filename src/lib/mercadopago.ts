@@ -77,9 +77,12 @@ export async function criarCobranca(c: NovaCobranca): Promise<string> {
   if (!resposta.ok) {
     throw new Error(`Mercado Pago recusou a cobrança (${resposta.status}): ${await resposta.text()}`);
   }
-  const dados = (await resposta.json()) as { init_point?: string };
-  if (!dados.init_point) throw new Error("Mercado Pago não devolveu o link de pagamento");
-  return dados.init_point;
+  const dados = (await resposta.json()) as { init_point?: string; sandbox_init_point?: string };
+  // Com credenciais de teste (TEST-...), o Mercado Pago usa o link do ambiente de teste.
+  const teste = token()?.startsWith("TEST-");
+  const link = (teste ? dados.sandbox_init_point : dados.init_point) ?? dados.init_point;
+  if (!link) throw new Error("Mercado Pago não devolveu o link de pagamento");
+  return link;
 }
 
 export type PagamentoMP = {
