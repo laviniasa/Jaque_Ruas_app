@@ -7,9 +7,9 @@ export const metadata: Metadata = { title: "Pagamento recebido" };
 export default async function Obrigada({
   searchParams,
 }: {
-  searchParams: Promise<{ status?: string; demo?: string }>;
+  searchParams: Promise<{ status?: string; demo?: string; teste?: string }>;
 }) {
-  const { status, demo } = await searchParams;
+  const { status, demo, teste } = await searchParams;
   const pendente = status === "pendente";
 
   const passos = pendente
@@ -32,9 +32,11 @@ export default async function Obrigada({
       <h1 className="mt-4 font-display text-5xl uppercase leading-none sm:text-6xl">
         {pendente ? "Quase lá!" : "Bem-vinda ao time!"}
       </h1>
-      {demo && (
+      {(demo || teste) && (
         <p className="mt-4 text-sm font-semibold text-[var(--muted)]">
-          Modo demonstração: nenhum pagamento real foi feito.
+          {teste
+            ? "Modo teste: o pagamento foi simulado, mas a conta e o e-mail são de verdade."
+            : "Modo demonstração: nenhum pagamento real foi feito."}
         </p>
       )}
 

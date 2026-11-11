@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { planos as planosDemo } from "@/lib/data";
+import { processarPagamento } from "@/lib/liberarPlano";
 import { criarCobranca, mercadoPagoConfigurado } from "@/lib/mercadopago";
 import { criarClienteAdmin } from "@/lib/supabase/admin";
 import { urlDoSite } from "@/lib/site";
@@ -16,8 +17,12 @@ export async function POST(request: Request) {
 
   const admin = criarClienteAdmin();
 
+  // Modo teste: finge que o pagamento foi aprovado (cria a conta, libera o plano e manda o e-mail).
+  // Ligue com PAGAMENTO_SIMULADO=true no servidor. DESLIGUE antes de lançar o site!
+  const simulado = Boolean(admin) && !mercadoPagoConfigurado() && process.env.PAGAMENTO_SIMULADO === "true";
+
   // Modo demonstração: sem Supabase ou sem Mercado Pago, vai direto para a tela de sucesso.
-  if (!admin || !mercadoPagoConfigurado()) {
+  if (!admin || (!mercadoPagoConfigurado() && !simulado)) {
     const plano = planosDemo.find((p) => p.id === dados.planoId && p.ativo);
     if (!plano) return NextResponse.json({ erro: "Plano não encontrado." }, { status: 404 });
     return NextResponse.json({ url: "/checkout/obrigada?demo=1" });
@@ -58,6 +63,20 @@ export async function POST(request: Request) {
   if (error || !compra) {
     console.error("Erro ao salvar compra", error);
     return NextResponse.json({ erro: "Não foi possível iniciar o pagamento. Tente de novo." }, { status: 500 });
+  }
+
+  if (simulado) {
+    try {
+      await processarPagamento(
+        admin,
+        { id: `teste-${compra.id}`, status: "approved", external_reference: compra.id, transaction_amount: Number(plano.preco) },
+        urlDoSite(request),
+      );
+      return NextResponse.json({ url: "/checkout/obrigada?teste=1" });
+    } catch (e) {
+      console.error("Erro no pagamento simulado", e);
+      return NextResponse.json({ erro: "Não foi possível liberar o plano de teste. Veja os logs do servidor." }, { status: 500 });
+    }
   }
 
   try {

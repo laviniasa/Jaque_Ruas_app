@@ -56,7 +56,7 @@ export async function criarCobranca(c: NovaCobranca): Promise<string> {
 }
 
 export type PagamentoMP = {
-  id: number;
+  id: number | string;
   status: "approved" | "pending" | "in_process" | "authorized" | "rejected" | "cancelled" | "refunded" | "charged_back";
   external_reference: string | null;
   transaction_amount: number;
