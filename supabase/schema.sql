@@ -58,6 +58,9 @@ create table if not exists public.compras (
     check (status in ('aguardando_pagamento', 'paga', 'recusada', 'cancelada')),
   pagamento_ref text,
   aluna_id uuid references public.perfis (id),
+  ip text,          -- antifraude: de onde veio a compra
+  user_agent text,  -- antifraude: navegador/aparelho
+  device_id text,   -- antifraude: identificador do aparelho (Mercado Pago)
   criado_em timestamptz not null default now(),
   pago_em timestamptz
 );

@@ -18,9 +18,14 @@ type NovaCobranca = {
   compraId: string;
   planoId: string;
   titulo: string;
+  descricao: string;
   preco: number;
   nome: string;
+  sobrenome: string;
   email: string;
+  cpf: string;
+  telefone: { area_code: string; number: string };
+  deviceId: string | null;
   siteUrl: string;
 };
 
@@ -32,10 +37,32 @@ export async function criarCobranca(c: NovaCobranca): Promise<string> {
       Authorization: `Bearer ${token()}`,
       "Content-Type": "application/json",
       "X-Idempotency-Key": c.compraId,
+      // Identificador do aparelho da compradora (antifraude do Mercado Pago)
+      ...(c.deviceId ? { "X-meli-session-id": c.deviceId } : {}),
     },
     body: JSON.stringify({
-      items: [{ id: c.planoId, title: c.titulo, quantity: 1, unit_price: c.preco, currency_id: "BRL" }],
-      payer: { name: c.nome, email: c.email },
+      // Quanto mais dados, melhor a análise de fraude e maior a aprovação.
+      items: [
+        {
+          id: c.planoId,
+          title: c.titulo,
+          description: c.descricao,
+          category_id: "services",
+          quantity: 1,
+          unit_price: c.preco,
+          currency_id: "BRL",
+        },
+      ],
+      payer: {
+        name: c.nome,
+        surname: c.sobrenome,
+        email: c.email,
+        phone: c.telefone,
+        identification: { type: "CPF", number: c.cpf },
+      },
+      // A cobrança vence em 30 minutos (evita links de pagamento antigos circulando).
+      expires: true,
+      expiration_date_to: new Date(Date.now() + 30 * 60 * 1000).toISOString(),
       external_reference: c.compraId,
       notification_url: `${c.siteUrl}/api/webhooks/mercadopago`,
       back_urls: {

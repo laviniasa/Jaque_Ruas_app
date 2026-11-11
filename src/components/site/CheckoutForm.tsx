@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 const objetivos = ["Glúteos", "Emagrecer", "Definição", "Saúde"];
 const horarios = ["Manhã", "Tarde", "Noite"];
@@ -19,6 +19,18 @@ export function CheckoutForm({ planoId, personal }: { planoId: string; personal:
   const [erro, setErro] = useState("");
   const [enviando, setEnviando] = useState(false);
 
+  // Script de segurança do Mercado Pago: gera o "Device ID" do aparelho da compradora,
+  // usado pela análise antifraude deles.
+  useEffect(() => {
+    if (document.getElementById("mp-security")) return;
+    const script = document.createElement("script");
+    script.id = "mp-security";
+    script.src = "https://www.mercadopago.com/v2/security.js";
+    script.setAttribute("view", "checkout");
+    script.async = true;
+    document.body.appendChild(script);
+  }, []);
+
   async function enviar(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setErro("");
@@ -28,7 +40,13 @@ export function CheckoutForm({ planoId, personal }: { planoId: string; personal:
       const resposta = await fetch("/api/checkout", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...dados, planoId, objetivo, horario: personal ? horario : null }),
+        body: JSON.stringify({
+          ...dados,
+          planoId,
+          objetivo,
+          horario: personal ? horario : null,
+          deviceId: (window as unknown as { MP_DEVICE_SESSION_ID?: string }).MP_DEVICE_SESSION_ID ?? null,
+        }),
       });
       const json = (await resposta.json()) as { url?: string; erro?: string };
       if (!resposta.ok || !json.url) throw new Error(json.erro ?? "Não foi possível iniciar o pagamento.");
@@ -43,6 +61,13 @@ export function CheckoutForm({ planoId, personal }: { planoId: string; personal:
   return (
     <form onSubmit={enviar} className="flex flex-col gap-4">
       <h2 className="text-xl font-extrabold">Seus dados</h2>
+      {/* Armadilha para robôs: pessoas não veem este campo; robôs costumam preencher. */}
+      <div aria-hidden="true" style={{ position: "absolute", left: "-9999px", width: 1, height: 1, overflow: "hidden" }}>
+        <label>
+          Não preencha
+          <input name="site" tabIndex={-1} autoComplete="off" />
+        </label>
+      </div>
       <label className="flex flex-col gap-1.5 text-sm font-bold text-[var(--text2)]">
         Nome completo
         <input name="nome" required autoComplete="name" className={campo} />

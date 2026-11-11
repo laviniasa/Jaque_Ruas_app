@@ -57,6 +57,20 @@ A senha **nunca** vai escrita no e-mail. Se o link vencer, a aluna pede outro na
 | `src/middleware.ts` | Protege o app (só aluna logada) e o painel (só a Jaque) |
 | `supabase/emails/` | Modelos de e-mail com a marca da Jaque |
 
+### Antifraude
+
+A análise de risco do cartão é do Mercado Pago. O site ajuda essa análise e coloca travas extras:
+
+- **Dados completos na cobrança:** nome, sobrenome, CPF, telefone, descrição e categoria do item.
+- **Device ID:** o script `security.js` do Mercado Pago identifica o aparelho e é enviado no cabeçalho `X-meli-session-id`.
+- **Limite de tentativas:** 6 por IP a cada 10 minutos e 4 por e-mail por hora.
+- **Armadilha para robôs:** campo escondido no formulário. Se for preenchido, a compra é recusada.
+- **Validações:** CPF válido, e-mail descartável recusado, preço sempre vindo do banco.
+- **Webhook seguro:** assinatura secreta conferida e pagamento consultado direto na API.
+- **Estorno e chargeback:** o acesso da aluna é bloqueado sozinho.
+- **Registro:** IP, navegador e Device ID ficam guardados na compra, para defesa em contestações.
+- **Validade:** a cobrança vence em 30 minutos.
+
 ### Configurar o pagamento e os e-mails
 
 1. **Mercado Pago:** em [Suas integrações](https://www.mercadopago.com.br/developers/panel/app), crie uma aplicação (Checkout Pro). Copie o *Access Token* para `MERCADOPAGO_ACCESS_TOKEN`. Em **Webhooks**, cadastre `https://SEU-SITE/api/webhooks/mercadopago` com o evento **Pagamentos** e copie a assinatura secreta para `MERCADOPAGO_WEBHOOK_SECRET`. Teste primeiro com as credenciais de teste.

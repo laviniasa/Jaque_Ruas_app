@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { dentroDoLimite, emailDescartavel, ipDaRequisicao, separarNome, separarTelefone } from "@/lib/antifraude";
 import { planos as planosDemo } from "@/lib/data";
 import { processarPagamento } from "@/lib/liberarPlano";
 import { criarCobranca, mercadoPagoConfigurado } from "@/lib/mercadopago";
@@ -14,6 +15,23 @@ export async function POST(request: Request) {
   const corpo = await request.json().catch(() => null);
   const dados = validar(corpo);
   if ("erro" in dados) return NextResponse.json({ erro: dados.erro }, { status: 400 });
+
+  // ---- Travas antifraude ----
+  // Robô: preencheu o campo escondido que pessoas não veem.
+  if (dados.armadilha) return NextResponse.json({ erro: "Não foi possível continuar." }, { status: 400 });
+
+  const ip = ipDaRequisicao(request);
+  const userAgent = (request.headers.get("user-agent") ?? "").slice(0, 300);
+  // No máximo 6 tentativas por IP a cada 10 minutos e 4 por e-mail por hora.
+  if (!dentroDoLimite(`ip:${ip}`, 6, 10 * 60_000) || !dentroDoLimite(`email:${dados.email}`, 4, 60 * 60_000)) {
+    return NextResponse.json(
+      { erro: "Muitas tentativas seguidas. Espere alguns minutos ou fale com a Jaque no WhatsApp." },
+      { status: 429 },
+    );
+  }
+  if (emailDescartavel(dados.email)) {
+    return NextResponse.json({ erro: "Use um e-mail pessoal (Gmail, Hotmail, iCloud...). É por ele que chega o seu acesso." }, { status: 400 });
+  }
 
   const admin = criarClienteAdmin();
 
@@ -57,6 +75,9 @@ export async function POST(request: Request) {
       objetivo: dados.objetivo,
       horario_preferido: dados.horario,
       valor: plano.preco,
+      ip,
+      user_agent: userAgent,
+      device_id: dados.deviceId,
     })
     .select("id")
     .single();
@@ -81,13 +102,19 @@ export async function POST(request: Request) {
 
   try {
     const titulo = `${plano.categoria === "personal" ? "Personal" : "Treino online"} ${plano.nome} | Jaque Ruas`;
+    const { nome, sobrenome } = separarNome(dados.nome);
     const url = await criarCobranca({
       compraId: compra.id,
       planoId: plano.id,
       titulo,
+      descricao: `Plano ${plano.nome} com a personal Jaque Ruas`,
       preco: Number(plano.preco),
-      nome: dados.nome,
+      nome,
+      sobrenome,
       email: dados.email,
+      cpf: dados.cpf,
+      telefone: separarTelefone(dados.whatsapp),
+      deviceId: dados.deviceId,
       siteUrl: urlDoSite(request),
     });
     return NextResponse.json({ url });
@@ -105,6 +132,8 @@ type DadosValidos = {
   cpf: string;
   objetivo: string | null;
   horario: string | null;
+  deviceId: string | null;
+  armadilha: boolean;
 };
 
 function validar(corpo: unknown): DadosValidos | { erro: string } {
@@ -132,6 +161,8 @@ function validar(corpo: unknown): DadosValidos | { erro: string } {
     cpf,
     objetivo: texto(c.objetivo, 40) || null,
     horario: texto(c.horario, 40) || null,
+    deviceId: texto(c.deviceId, 200) || null,
+    armadilha: Boolean(texto(c.site)),
   };
 }
 

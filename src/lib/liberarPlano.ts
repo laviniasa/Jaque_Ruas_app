@@ -19,7 +19,15 @@ export async function processarPagamento(admin: ClienteAdmin, pagamento: Pagamen
     .eq("id", pagamento.external_reference)
     .maybeSingle();
   if (erroCompra) throw erroCompra;
-  if (!compra || compra.status === "paga") return;
+  if (!compra) return;
+
+  // Estorno ou contestação (chargeback) depois de pago: bloqueia o acesso no app.
+  if (pagamento.status === "refunded" || pagamento.status === "charged_back") {
+    await admin.from("assinaturas").update({ status: "bloqueada" }).eq("pagamento_ref", String(pagamento.id));
+    await admin.from("compras").update({ status: "cancelada" }).eq("id", compra.id);
+    return;
+  }
+  if (compra.status === "paga") return;
 
   if (pagamento.status === "rejected" || pagamento.status === "cancelled") {
     await admin
